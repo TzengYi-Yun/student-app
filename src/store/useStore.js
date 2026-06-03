@@ -34,17 +34,19 @@ const syncCourses = (courses) => {
 };
 
 const useStore = create((set, get) => ({
-  // =====================
-  // STATE
-  // =====================
   tasks: savedTasks,
   courses: savedCourses,
   stress: calculateStress(savedTasks),
+  listenAuth: () => {
+    onAuthStateChanged(auth, (user) => {
+      set({ user: user || null });
+    });
+  },
   studyPlans: [],
+  mapPosts: [],
 
-  // =====================
-  // TASKS
-  // =====================
+  setMapPosts: (posts) => set({ mapPosts: posts }),
+
   addTask: (task) => {
     const updated = [...get().tasks, task];
 

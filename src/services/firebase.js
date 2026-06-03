@@ -1,7 +1,9 @@
 import { initializeApp } from "firebase/app";
+
+import { getAuth } from "firebase/auth";
+
 import { getFirestore } from "firebase/firestore";
 
-// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCNuICR1ViH0lGChZQVhCYZqozaEW8ELgo",
   authDomain: "student-app-5d0ef.firebaseapp.com",
@@ -11,8 +13,8 @@ const firebaseConfig = {
   appId: "1:535484627407:web:77ef6587eafa38fe01baba",
 };
 
-// 初始化 Firebase
 const app = initializeApp(firebaseConfig);
 
-// 🔥 Firestore（你專題真正會用到的）
+export const auth = getAuth(app);
+
 export const db = getFirestore(app);
