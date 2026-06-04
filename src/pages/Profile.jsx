@@ -1,35 +1,50 @@
-import { useAuth }
-  from "../context/AuthContext";
+import { useEffect, useState } from "react";
+import useStore from "../store/useStore";
 
-import useStore
-  from "../store/useStore";
+import {
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
+
+import { auth } from "../services/firebase";
 
 function Profile() {
+  const { user, setUser } = useStore();
 
-  const { user, login, logout } =
-    useAuth();
+  const [loading, setLoading] = useState(true);
 
-  const {
-    tasks,
-    courses,
-    stress,
-  } = useStore();
+  // =========================
+  // AUTH LISTENER
+  // =========================
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [setUser]);
+
+  // =========================
+  // LOGOUT
+  // =========================
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-white p-6">載入中...</div>;
+  }
 
   if (!user) {
     return (
-      <div className="space-y-6">
-
-        <h1 className="text-3xl font-bold">
-          帳號中心
-        </h1>
-
-        <button
-          onClick={login}
-          className="bg-purple-600 px-5 py-3 rounded-xl"
-        >
-          Google 登入
-        </button>
-
+      <div className="p-6 text-gray-400">
+        尚未登入
       </div>
     );
   }
@@ -37,59 +52,55 @@ function Profile() {
   return (
     <div className="space-y-6">
 
-      <h1 className="text-3xl font-bold">
-        個人資料
-      </h1>
-
-      <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
-
-        <img
-          src={user.photoURL}
-          alt=""
-          className="w-20 h-20 rounded-full mb-4"
-        />
-
-        <p>
-          名稱：
-          {user.displayName}
+      {/* TITLE */}
+      <div>
+        <h1 className="text-3xl font-bold">
+          個人檔案
+        </h1>
+        <p className="text-gray-400">
+          Firebase 使用者資訊
         </p>
-
-        <p>
-          Email：
-          {user.email}
-        </p>
-
       </div>
 
-      <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
+      {/* USER CARD */}
+      <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-4">
 
-        <h2 className="text-xl font-bold mb-4">
-          Survival OS 統計
-        </h2>
+        {/* EMAIL */}
+        <div>
+          <p className="text-gray-400 text-sm">
+            Email
+          </p>
+          <p className="text-white font-bold">
+            {user.email}
+          </p>
+        </div>
 
-        <p>
-          課程數：
-          {courses.length}
-        </p>
+        {/* UID */}
+        <div>
+          <p className="text-gray-400 text-sm">
+            UID
+          </p>
+          <p className="text-xs text-gray-300 break-all">
+            {user.uid}
+          </p>
+        </div>
 
-        <p>
-          作業數：
-          {tasks.length}
-        </p>
+        {/* STATUS */}
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          <p className="text-green-400 text-sm">
+            已登入
+          </p>
+        </div>
 
-        <p>
-          壓力值：
-          {stress}%
-        </p>
-
+        {/* LOGOUT */}
+        <button
+          onClick={handleLogout}
+          className="w-full bg-red-500 hover:bg-red-600 p-3 rounded-lg font-bold"
+        >
+          登出
+        </button>
       </div>
-
-      <button
-        onClick={logout}
-        className="bg-red-600 px-5 py-3 rounded-xl"
-      >
-        登出
-      </button>
 
     </div>
   );

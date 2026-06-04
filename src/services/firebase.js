@@ -1,8 +1,8 @@
 import { initializeApp } from "firebase/app";
-
-import { getAuth } from "firebase/auth";
-
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+
+import useStore from "../store/useStore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCNuICR1ViH0lGChZQVhCYZqozaEW8ELgo",
@@ -16,5 +16,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-
 export const db = getFirestore(app);
+
+// 🔥 這段是你缺的關鍵（一定要加）
+onAuthStateChanged(auth, (user) => {
+  console.log("🔥 AUTH STATE:", user);
+
+  useStore.getState().setUser(user);
+});

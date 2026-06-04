@@ -1,14 +1,14 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useStore from "../store/useStore";
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function Calendar() {
   const {
-    courses,
+    user,
     tasks,
+    courses,
     stress,
-    studyPlans,
     setStudyPlans,
   } = useStore();
 
@@ -18,13 +18,11 @@ function Calendar() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // ✔ 固定 today（避免 re-render bug）
   const today = useMemo(() => new Date(), []);
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // 📅 月曆生成
   const calendar = useMemo(() => {
     const arr = [];
 
@@ -37,18 +35,30 @@ function Calendar() {
     }
 
     return arr;
-  }, [year, month]);
+  }, [year, month, firstDay, daysInMonth]);
 
-  // 📘 課程
+  // ======================
+  // COURSE FILTER
+  // ======================
   const getCourses = (dateObj) => {
+    if (!dateObj) return [];
+
     const dayName = weekDays[dateObj.getDay()];
-    return courses.filter((c) => c.day === dayName);
+
+    return (courses || []).filter((c) => c.day === dayName);
   };
 
-  // 📝 作業
+  // ======================
+  // TASK FILTER
+  // ======================
   const getTasks = (dateObj) => {
-    return tasks.filter((t) => {
+    if (!dateObj) return [];
+
+    return (tasks || []).filter((t) => {
+      if (!t.deadline) return false;
+
       const d = new Date(t.deadline);
+
       return (
         d.getFullYear() === dateObj.getFullYear() &&
         d.getMonth() === dateObj.getMonth() &&
@@ -57,7 +67,9 @@ function Calendar() {
     });
   };
 
-  // 🎨 壓力顏色
+  // ======================
+  // COLOR LOGIC
+  // ======================
   const getLoadColor = (count) => {
     if (count === 0) return "bg-gray-900";
     if (count <= 2) return "bg-green-900";
@@ -65,20 +77,34 @@ function Calendar() {
     return "bg-red-900";
   };
 
-  // 📆 切月
+  // ======================
+  // MONTH CONTROL
+  // ======================
   const changeMonth = (offset) => {
     setCurrentDate(new Date(year, month + offset, 1));
     setSelectedDate(null);
   };
 
-  // 👉 選擇資料
-  const selectedCourses = selectedDate
-    ? getCourses(selectedDate)
-    : [];
+  // ======================
+  // AI PLAN
+  // ======================
+  const handleAIPlan = () => {
+    if (!setStudyPlans) return;
 
-  const selectedTasks = selectedDate
-    ? getTasks(selectedDate)
-    : [];
+    const plans = (tasks || []).map((t) => ({
+      id: "ai-" + t.id,
+      title: "📚 Study " + t.title,
+      date: t.deadline,
+    }));
+
+    setStudyPlans(plans);
+  };
+
+  // ======================
+  // SELECTED DATA
+  // ======================
+  const selectedCourses = selectedDate ? getCourses(selectedDate) : [];
+  const selectedTasks = selectedDate ? getTasks(selectedDate) : [];
 
   return (
     <div className="space-y-6">
@@ -86,28 +112,14 @@ function Calendar() {
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">
-            Calendar
-          </h1>
-
+          <h1 className="text-3xl font-bold">Calendar</h1>
           <p className="text-gray-400">
-            Stress Level: {stress}/100
+            Stress Level: {stress ?? 0}/100
           </p>
         </div>
 
-        {/* AI 按鈕（未來擴充用） */}
         <button
-          onClick={() => {
-            if (!setStudyPlans) return;
-
-            const plans = tasks.map((t) => ({
-              id: "ai-" + t.id,
-              title: "📚 Study " + t.title,
-              date: t.deadline,
-            }));
-
-            setStudyPlans(plans);
-          }}
+          onClick={handleAIPlan}
           className="px-3 py-2 bg-purple-600 rounded"
         >
           🤖 AI 排讀書時間
@@ -115,7 +127,7 @@ function Calendar() {
       </div>
 
       {/* MONTH CONTROL */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <button
           onClick={() => changeMonth(-1)}
           className="px-3 py-1 bg-gray-800 rounded"
@@ -135,14 +147,14 @@ function Calendar() {
         </button>
       </div>
 
-      {/* WEEK */}
+      {/* WEEK HEADER */}
       <div className="grid grid-cols-7 text-center text-gray-400 font-bold">
         {weekDays.map((d) => (
           <div key={d}>{d}</div>
         ))}
       </div>
 
-      {/* CALENDAR */}
+      {/* CALENDAR GRID */}
       <div className="grid grid-cols-7 gap-2">
         {calendar.map((dateObj, i) => {
           if (!dateObj) return <div key={i} className="h-24" />;
@@ -168,20 +180,16 @@ function Calendar() {
                 {dateObj.getDate()}
               </div>
 
+              {/* course preview */}
               {c.slice(0, 1).map((x) => (
-                <div
-                  key={x.id}
-                  className="text-xs text-blue-300"
-                >
+                <div key={x.id} className="text-xs text-blue-300">
                   {x.title}
                 </div>
               ))}
 
+              {/* task preview */}
               {t.slice(0, 1).map((x) => (
-                <div
-                  key={x.id}
-                  className="text-xs text-red-300"
-                >
+                <div key={x.id} className="text-xs text-red-300">
                   {x.title}
                 </div>
               ))}
@@ -198,8 +206,9 @@ function Calendar() {
 
       {/* DETAIL PANEL */}
       <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800">
+
         {selectedDate ? (
-          <div>
+          <>
             <h2 className="text-xl font-bold mb-3">
               {selectedDate.toLocaleDateString()}
             </h2>
@@ -216,10 +225,7 @@ function Calendar() {
                 </p>
               ) : (
                 selectedCourses.map((c) => (
-                  <div
-                    key={c.id}
-                    className="bg-gray-800 p-2 rounded mb-2"
-                  >
+                  <div key={c.id} className="bg-gray-800 p-2 rounded mb-2">
                     {c.title} ({c.startTime} - {c.endTime})
                   </div>
                 ))
@@ -238,16 +244,13 @@ function Calendar() {
                 </p>
               ) : (
                 selectedTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="bg-gray-800 p-2 rounded mb-2"
-                  >
+                  <div key={t.id} className="bg-gray-800 p-2 rounded mb-2">
                     {t.title}
                   </div>
                 ))
               )}
             </div>
-          </div>
+          </>
         ) : (
           <p className="text-gray-400">
             點選日期查看課程與作業

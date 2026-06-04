@@ -1,13 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useStore from "../store/useStore";
 
-const days = [
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-];
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+} from "firebase/firestore";
+
+import { db } from "../services/firebase";
+
+const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 const colors = [
   "bg-purple-500",
@@ -18,31 +25,51 @@ const colors = [
 ];
 
 function Schedule() {
-  const {
-    courses,
-    addCourse,
-    deleteCourse,
-  } = useStore();
+  const { user, courses, setCourses } = useStore();
 
+  const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [day, setDay] = useState("Mon");
-  const [startTime, setStartTime] =
-    useState("");
-  const [endTime, setEndTime] =
-    useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [room, setRoom] = useState("");
 
-  const handleAddCourse = () => {
-    if (
-      !title ||
-      !startTime ||
-      !endTime ||
-      !room
-    ) {
+  useEffect(() => {
+    if (!user) {
+      setCourses([]);
+      setLoading(false);
       return;
     }
 
-    // 時間衝突檢查
+    const q = query(
+      collection(db, "courses"),
+      where("uid", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+
+        setCourses(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error(error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user, setCourses]);
+
+  const handleAddCourse = async () => {
+    if (!title || !startTime || !endTime || !room || !user) return;
+
     const conflict = courses.some(
       (course) =>
         course.day === day &&
@@ -55,90 +82,87 @@ function Schedule() {
       return;
     }
 
-    addCourse({
-      id: Date.now(),
-      title,
-      day,
-      startTime,
-      endTime,
-      room,
-      color:
-        colors[
-          Math.floor(
-            Math.random() * colors.length
-          )
-        ],
-    });
+    try {
+      await addDoc(collection(db, "courses"), {
+        title,
+        day,
+        startTime,
+        endTime,
+        room,
+        color:
+          colors[Math.floor(Math.random() * colors.length)],
+        uid: user.uid,
+        createdAt: Date.now(),
+      });
 
-    // 清空
-    setTitle("");
-    setStartTime("");
-    setEndTime("");
-    setRoom("");
+      setTitle("");
+      setStartTime("");
+      setEndTime("");
+      setRoom("");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCourse = async (id) => {
+    try {
+      await deleteDoc(doc(db, "courses", id));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getScheduleAnalysis = () => {
-    if (courses.length === 0) {
-      return "目前沒有課程。";
-    }
-
-    if (courses.length < 4) {
-      return "這學期感覺很輕鬆。";
-    }
-
-    if (courses.length < 8) {
-      return "你的課程量正常。";
-    }
-
+    if (courses.length === 0) return "目前沒有課程。";
+    if (courses.length < 4) return "這學期感覺很輕鬆。";
+    if (courses.length < 8) return "你的課程量正常。";
     return "⚠️ 這學期可能會很痛苦。";
   };
 
+  if (loading) {
+    return (
+      <div className="text-white p-6">
+        載入中...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* 標題 */}
+
       <div>
         <h1 className="text-3xl font-bold">
           課表系統
         </h1>
-
         <p className="text-gray-400">
-          管理你的大學人生。
+          Firebase 即時同步
         </p>
       </div>
 
-      {/* AI分析 */}
       <div className="bg-purple-600 p-5 rounded-2xl">
         <h2 className="text-xl font-bold mb-2">
           AI 課表分析
         </h2>
-
         <p>{getScheduleAnalysis()}</p>
       </div>
 
-      {/* 新增課程 */}
       <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-4">
+
         <input
           type="text"
           placeholder="課程名稱"
           value={title}
-          onChange={(e) =>
-            setTitle(e.target.value)
-          }
+          onChange={(e) => setTitle(e.target.value)}
           className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700"
         />
 
         <select
           value={day}
-          onChange={(e) =>
-            setDay(e.target.value)
-          }
+          onChange={(e) => setDay(e.target.value)}
           className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700"
         >
           {days.map((d) => (
-            <option
-              key={d}
-              value={d}
-            >
+            <option key={d} value={d}>
               {d}
             </option>
           ))}
@@ -148,18 +172,14 @@ function Schedule() {
           <input
             type="time"
             value={startTime}
-            onChange={(e) =>
-              setStartTime(e.target.value)
-            }
+            onChange={(e) => setStartTime(e.target.value)}
             className="p-3 rounded-lg bg-gray-800 border border-gray-700"
           />
 
           <input
             type="time"
             value={endTime}
-            onChange={(e) =>
-              setEndTime(e.target.value)
-            }
+            onChange={(e) => setEndTime(e.target.value)}
             className="p-3 rounded-lg bg-gray-800 border border-gray-700"
           />
         </div>
@@ -168,22 +188,20 @@ function Schedule() {
           type="text"
           placeholder="教室"
           value={room}
-          onChange={(e) =>
-            setRoom(e.target.value)
-          }
+          onChange={(e) => setRoom(e.target.value)}
           className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700"
         />
 
         <button
           onClick={handleAddCourse}
-          className="w-full bg-purple-600 hover:bg-purple-700 transition p-3 rounded-lg font-bold"
+          className="w-full bg-purple-600 hover:bg-purple-700 p-3 rounded-lg font-bold"
         >
           新增課程
         </button>
       </div>
 
-      {/* 課表 */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+
         {days.map((d) => (
           <div
             key={d}
@@ -194,15 +212,11 @@ function Schedule() {
             </h2>
 
             <div className="space-y-3">
+
               {courses
-                .filter(
-                  (course) =>
-                    course.day === d
-                )
+                .filter((course) => course.day === d)
                 .sort((a, b) =>
-                  a.startTime.localeCompare(
-                    b.startTime
-                  )
+                  a.startTime.localeCompare(b.startTime)
                 )
                 .map((course) => (
                   <div
@@ -214,8 +228,7 @@ function Schedule() {
                     </h3>
 
                     <p className="text-sm">
-                      {course.startTime} -{" "}
-                      {course.endTime}
+                      {course.startTime} - {course.endTime}
                     </p>
 
                     <p className="text-sm">
@@ -223,29 +236,24 @@ function Schedule() {
                     </p>
 
                     <button
-                      onClick={() =>
-                        deleteCourse(
-                          course.id
-                        )
-                      }
-                      className="mt-2 text-xs bg-black/20 px-2 py-1 rounded hover:bg-black/40"
+                      onClick={() => handleDeleteCourse(course.id)}
+                      className="mt-2 text-xs bg-black/20 px-2 py-1 rounded"
                     >
                       刪除
                     </button>
                   </div>
                 ))}
 
-              {courses.filter(
-                (course) =>
-                  course.day === d
-              ).length === 0 && (
+              {courses.filter((course) => course.day === d).length === 0 && (
                 <p className="text-gray-500 text-sm">
                   沒有課程
                 </p>
               )}
+
             </div>
           </div>
         ))}
+
       </div>
     </div>
   );
