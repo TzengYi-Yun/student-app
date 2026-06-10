@@ -46,7 +46,7 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/student-app">
       <div className="flex h-screen bg-gray-950 text-white">
         <Sidebar />
 
