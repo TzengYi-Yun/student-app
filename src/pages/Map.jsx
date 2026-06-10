@@ -25,12 +25,15 @@ function Map() {
   const [loading, setLoading] = useState(true);
 
   const [selectedPost, setSelectedPost] = useState(null);
+
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
 
-  // =========================
+  const [replyTo, setReplyTo] = useState(null);
+
+  // =====================
   // POSTS
-  // =========================
+  // =====================
   useEffect(() => {
     const q = query(
       collection(db, "mapPosts"),
@@ -50,9 +53,9 @@ function Map() {
     return () => unsub();
   }, []);
 
-  // =========================
+  // =====================
   // COMMENTS
-  // =========================
+  // =====================
   useEffect(() => {
     if (!selectedPost?.id) {
       setComments([]);
@@ -76,90 +79,83 @@ function Map() {
     return () => unsub();
   }, [selectedPost?.id]);
 
-  // =========================
-  // ADD POST
-  // =========================
+  // =====================
+  // POST
+  // =====================
   const handleAddPost = async () => {
-    if (!user) return console.log("❌ no user");
-    if (!text || !location) return console.log("❌ empty");
+    if (!user) return;
+    if (!text || !location) return;
 
-    try {
-      await addDoc(collection(db, "mapPosts"), {
-        text,
-        location,
-        uid: user.uid,
-        email: user.email,
-        likes: [],
-        likeCount: 0,
-        createdAt: Date.now(),
-      });
+    await addDoc(collection(db, "mapPosts"), {
+      text,
+      location,
+      uid: user.uid,
+      email: user.email,
+      likes: [],
+      likeCount: 0,
+      commentCount: 0,
+      createdAt: Date.now(),
+    });
 
-      setText("");
-      setLocation("");
-    } catch (err) {
-      console.error("POST ERROR:", err);
-    }
+    setText("");
+    setLocation("");
   };
 
-  // =========================
-  // LIKE (FIXED)
-  // =========================
+  // =====================
+  // LIKE
+  // =====================
   const handleLike = async (post) => {
     if (!user) return;
 
     const ref = doc(db, "mapPosts", post.id);
     const hasLiked = post.likes?.includes(user.uid);
 
-    try {
-      await updateDoc(ref, {
-        likes: hasLiked
-          ? arrayRemove(user.uid)
-          : arrayUnion(user.uid),
-        likeCount: increment(hasLiked ? -1 : 1),
-      });
-    } catch (err) {
-      console.error("LIKE ERROR:", err);
-    }
+    await updateDoc(ref, {
+      likes: hasLiked
+        ? arrayRemove(user.uid)
+        : arrayUnion(user.uid),
+      likeCount: increment(hasLiked ? -1 : 1),
+    });
   };
 
-  // =========================
-  // COMMENT (FIXED + DEBUG)
-  // =========================
+  // =====================
+  // COMMENT / REPLY
+  // =====================
   const handleAddComment = async () => {
-    console.log("🔥 click comment");
+    if (!user) return;
+    if (!selectedPost?.id) return;
+    if (!comment) return;
 
-    if (!user) return console.log("❌ no user");
-    if (!selectedPost?.id) return console.log("❌ no post");
-    if (!comment) return console.log("❌ empty comment");
+    await addDoc(
+      collection(db, "mapPosts", selectedPost.id, "comments"),
+      {
+        text: comment,
+        uid: user.uid,
+        email: user.email,
+        createdAt: Date.now(),
+        replyTo: replyTo || null,
+      }
+    );
 
-    try {
-      await addDoc(
-        collection(db, "mapPosts", selectedPost.id, "comments"),
-        {
-          text: comment,
-          uid: user.uid,
-          email: user.email,
-          createdAt: Date.now(),
-        }
-      );
+    await updateDoc(doc(db, "mapPosts", selectedPost.id), {
+      commentCount: increment(1),
+    });
 
-      setComment("");
-      console.log("✅ comment sent");
-    } catch (err) {
-      console.error("COMMENT ERROR:", err.code, err.message);
-    }
+    setComment("");
+    setReplyTo(null);
   };
 
-  // =========================
+  // =====================
   // DELETE
-  // =========================
+  // =====================
   const handleDelete = async (post) => {
     if (post.uid !== user?.uid) return;
-
     await deleteDoc(doc(db, "mapPosts", post.id));
   };
 
-  if (loading) return <div className="text-white p-6">載入中...</div>;
+  if (loading) {
+    return <div className="text-white p-6">載入中...</div>;
+  }
 
   return (
     <div className="space-y-6 text-white">
@@ -167,20 +163,19 @@ function Map() {
       <h1 className="text-3xl font-bold">Map 社群牆</h1>
 
       {/* INPUT */}
-      <div className="bg-gray-900 p-5 rounded-2xl space-y-3">
-
+      <div className="bg-zinc-900 p-5 rounded-2xl space-y-3">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="你想說什麼？"
-          className="w-full p-3 bg-gray-800 rounded"
+          className="w-full p-3 bg-zinc-800 rounded"
         />
 
         <input
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="地點"
-          className="w-full p-3 bg-gray-800 rounded"
+          className="w-full p-3 bg-zinc-800 rounded"
         />
 
         <button
@@ -197,29 +192,64 @@ function Map() {
           <div
             key={post.id}
             onClick={() => setSelectedPost(post)}
-            className="p-5 rounded-2xl bg-gradient-to-r from-purple-900 to-blue-900"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 hover:bg-zinc-900 transition cursor-pointer"
           >
 
-            <div className="text-xs">{post.email}</div>
+            <div className="flex gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center font-bold">
+                {(post.email || "A")[0].toUpperCase()}
+              </div>
 
-            <div className="text-lg font-bold">
-              {post.text}
+              <div className="flex-1">
+                <div className="font-bold">
+                  {post.email?.split("@")[0]}
+                </div>
+
+                <div className="mt-2 whitespace-pre-wrap">
+                  {post.text}
+                </div>
+
+                {post.location && (
+                  <div className="mt-2 inline-block bg-zinc-800 px-2 py-1 rounded-full text-xs">
+                    📍 {post.location}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="text-sm">
-              📍 {post.location}
-            </div>
+            {/* ACTIONS */}
+            <div className="flex items-center gap-6 mt-4 border-t border-zinc-800 pt-3">
 
-            {/* LIKE */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLike(post);
-              }}
-              className="mt-3 flex gap-2 items-center active:scale-125 transition"
-            >
-              ❤️ {post.likeCount || 0}
-            </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLike(post);
+                }}
+                className={`flex items-center gap-2 ${
+                  post.likes?.includes(user?.uid)
+                    ? "text-red-500"
+                    : "text-zinc-400"
+                }`}
+              >
+                ❤️ {post.likeCount || 0}
+              </button>
+
+              <div className="text-zinc-400">
+                💬 {post.commentCount || 0}
+              </div>
+
+              {/* OPEN COMMENT */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedPost(post);
+                }}
+                className="text-blue-400"
+              >
+                回覆
+              </button>
+
+            </div>
 
             {/* DELETE */}
             {user?.uid === post.uid && (
@@ -233,6 +263,7 @@ function Map() {
                 刪除
               </button>
             )}
+
           </div>
         ))}
       </div>
@@ -241,7 +272,7 @@ function Map() {
       {selectedPost && (
         <div className="fixed inset-0 bg-black/70 flex items-end">
 
-          <div className="w-full bg-gray-900 p-5 rounded-t-2xl">
+          <div className="w-full bg-zinc-900 p-5 rounded-t-2xl">
 
             <button
               onClick={() => setSelectedPost(null)}
@@ -257,11 +288,24 @@ function Map() {
             {/* COMMENTS */}
             <div className="space-y-2 mb-4">
               {comments.map((c) => (
-                <div key={c.id} className="bg-gray-800 p-3 rounded">
+                <div
+                  key={c.id}
+                  className={`bg-zinc-800 p-3 rounded ${
+                    c.replyTo ? "ml-6 border-l-2 border-purple-500" : ""
+                  }`}
+                >
                   <div className="text-xs text-gray-400">
                     {c.email}
                   </div>
+
                   <div>{c.text}</div>
+
+                  <button
+                    onClick={() => setReplyTo(c.id)}
+                    className="text-xs text-blue-400 mt-1"
+                  >
+                    回覆
+                  </button>
                 </div>
               ))}
             </div>
@@ -271,8 +315,10 @@ function Map() {
               <input
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="留言..."
-                className="flex-1 p-3 bg-gray-800 rounded"
+                placeholder={
+                  replyTo ? "回覆留言中..." : "留言..."
+                }
+                className="flex-1 p-3 bg-zinc-800 rounded"
               />
 
               <button
@@ -286,7 +332,6 @@ function Map() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

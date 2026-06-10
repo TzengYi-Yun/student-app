@@ -117,13 +117,6 @@ function Calendar() {
             Stress Level: {stress ?? 0}/100
           </p>
         </div>
-
-        <button
-          onClick={handleAIPlan}
-          className="px-3 py-2 bg-purple-600 rounded"
-        >
-          🤖 AI 排讀書時間
-        </button>
       </div>
 
       {/* MONTH CONTROL */}

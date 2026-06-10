@@ -112,13 +112,6 @@ function Schedule() {
     }
   };
 
-  const getScheduleAnalysis = () => {
-    if (courses.length === 0) return "目前沒有課程。";
-    if (courses.length < 4) return "這學期感覺很輕鬆。";
-    if (courses.length < 8) return "你的課程量正常。";
-    return "⚠️ 這學期可能會很痛苦。";
-  };
-
   if (loading) {
     return (
       <div className="text-white p-6">
@@ -137,13 +130,6 @@ function Schedule() {
         <p className="text-gray-400">
           Firebase 即時同步
         </p>
-      </div>
-
-      <div className="bg-purple-600 p-5 rounded-2xl">
-        <h2 className="text-xl font-bold mb-2">
-          AI 課表分析
-        </h2>
-        <p>{getScheduleAnalysis()}</p>
       </div>
 
       <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-4">

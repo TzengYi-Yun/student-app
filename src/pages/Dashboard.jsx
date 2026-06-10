@@ -1,7 +1,6 @@
 import CourseCard from "../components/CourseCard";
 import StressChart from "../components/StressChart";
 import DeadlineList from "../components/DeadlineList";
-import AIWidget from "../components/AIWidget";
 
 import useStore from "../store/useStore";
 
@@ -69,9 +68,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* AI */}
-      <AIWidget />
-
+     
       {/* 今日課表 */}
       <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800">
         <h2 className="text-xl font-bold mb-3">
