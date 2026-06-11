@@ -1,6 +1,7 @@
 import CourseCard from "../components/CourseCard";
 import StressChart from "../components/StressChart";
 import DeadlineList from "../components/DeadlineList";
+import WeatherCard from "../components/WeatherCard";
 
 import useStore from "../store/useStore";
 
@@ -67,7 +68,10 @@ function Dashboard() {
           </p>
         </div>
       </div>
-
+      
+      <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800">
+  <WeatherCard />
+      </div>
      
       {/* 今日課表 */}
       <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800">
@@ -120,6 +124,8 @@ function Dashboard() {
         <DeadlineList />
       </div>
     </div>
+
+    
   );
 }
 
