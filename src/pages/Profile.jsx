@@ -38,15 +38,15 @@ function Profile() {
   };
 
   if (loading) {
-    return <div className="text-white p-6">載入中...</div>;
-  }
-
-  if (!user) {
     return (
-      <div className="p-6 text-gray-400">
-        尚未登入
+      <div className="text-white p-6">
+        載入中...
       </div>
     );
+  }
+  
+  if (!user) {
+    return <Login />;
   }
 
   return (

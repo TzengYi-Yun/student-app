@@ -19,7 +19,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] =
     useState(true);
-
+  console.log("loading =", loading);
+  console.log("user =", user);
   useEffect(() => {
     const unsubscribe =
       onAuthStateChanged(
@@ -46,7 +47,7 @@ function App() {
   }
 
   return (
-    <BrowserRouter basename="/student-app">
+    <BrowserRouter>
       <div className="flex h-screen bg-gray-950 text-white">
         <Sidebar />
 

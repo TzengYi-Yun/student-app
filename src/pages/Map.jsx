@@ -118,9 +118,7 @@ function Map() {
     });
   };
 
-  // =====================
-  // COMMENT / REPLY
-  // =====================
+
   const handleAddComment = async () => {
     if (!user) return;
     if (!selectedPost?.id) return;
